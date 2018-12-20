@@ -211,9 +211,9 @@ int main(int argc, char *argv[])
 
     rx = (received - received_old) / (float)(s - s_old);
     tx = (sent - sent_old) / (float)(s - s_old);
-    printf("%s", label);
+    printf("%s ", label);
     display(unit, divisor, rx, warningrx, criticalrx);
-    printf(" ");
+    printf("  ");
     display(unit, divisor, tx, warningtx, criticaltx);
     printf("\n");
     fflush(stdout);
