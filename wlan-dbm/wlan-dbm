@@ -21,12 +21,15 @@ while getopts p opt; do
     esac
 done
 
-dbm=$($IW dev "$IFACE" link | grep 'dBm$' | grep -Eoe '-[0-9]{2}')
+info=$($IW dev "$IFACE" link)
+
+dbm=$( echo "$info" | grep 'dBm$' | grep -Eoe '-[0-9]{2}')
+band=$(echo "$info" | grep 'freq:' | grep -Eoe '[0-9]{4}' | awk '{print $1 / 10^3 "GHz"}')
 
 [[ -n "$dbm" ]] || exit 1
 
 if [[ $USE_PERCENT -eq 0 ]]; then
-    echo "$dbm" dBm
+    echo "$dbm" dBm "$band"
     echo "$dbm"
 else
     if [[ "$dbm" -le -100 ]]; then
