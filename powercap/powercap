@@ -1,0 +1,122 @@
+#! /usr/bin/env python3
+
+from pathlib import Path
+import argparse
+import os
+import sys
+import time
+
+powercap = Path("/sys/class/powercap")
+
+
+class Interface(object):
+    def __init__(self, intf_path):
+        self.intf_path = intf_path
+        self.name = Path(intf_path, "name").read_text().strip()
+        self.energy_path = Path(intf_path, "energy_uj")
+        self.time, self.energy = self.now()
+
+    def read_energy(self):
+        return int(self.energy_path.read_text().strip())
+
+    def now(self):
+        return time.time(), self.read_energy()
+
+    def update(self):
+        t, energy = self.now()
+        seconds = t - self.time
+        last_energy = energy - self.energy
+        self.wattage = last_energy / seconds
+
+        self.energy = energy
+        self.time = t
+
+    def __str__(self):
+        return "%s (%s): %.3fW" % (self.name, self.intf_path.name, self.wattage / 1e6)
+
+
+def get_env_units():
+    units = os.environ.get("UNITS")
+    return units and units.split(",")
+
+
+def get_env_control_types():
+    control_types = os.environ.get("CONTROL_TYPES")
+    return control_types and control_types.split(",")
+
+
+parser = argparse.ArgumentParser(
+    description="Calculate and print realtime powercap energy usage stats"
+)
+parser.add_argument(
+    "-u",
+    "--unit",
+    metavar="name",
+    type=str,
+    dest="units",
+    nargs="+",
+    help="Name(s) of sensors to print",
+    default=get_env_units(),
+)
+parser.add_argument(
+    "-t",
+    "--control_type",
+    metavar="name",
+    type=str,
+    dest="control_types",
+    nargs="+",
+    help="Name(s) of the control types (sysfs directories) to print",
+    default=get_env_control_types(),
+)
+parser.add_argument(
+    "-w",
+    "--wattage",
+    action="store_true",
+    help="Print wattage only, without names",
+    default=os.environ.get("WATTAGE"),
+)
+parser.add_argument(
+    "-i",
+    "--interval",
+    type=float,
+    dest="interval",
+    help="Refresh interval, in seconds",
+    default=float(os.environ.get("INTERVAL", 1)),
+)
+
+args = parser.parse_args()
+
+units = args.units and set(args.units) or set()
+control_types = args.control_types and set(args.control_types) or set()
+
+intfs = {}
+
+for intf in powercap.glob("*/name"):
+    intf = intf.parent
+    if intf.is_dir():
+        i = Interface(intf)
+        no_filtering = not units and not control_types
+        if no_filtering or i.name in units or intf.name in control_types:
+            intfs[intf.name] = i
+
+for u in units - {i.name for i in intfs.values()}:
+    print(f"Warning: Interface unit {u} not found")
+
+for u in control_types - {i.intf_path.name for i in intfs.values()}:
+    print(f"Warning: Interface control type {u} not found")
+
+if not intfs:
+    print("No interfaces!")
+    sys.exit(1)
+
+while True:
+    time.sleep(args.interval)
+    result = []
+    for name, intf in intfs.items():
+        intf.update()
+        if args.wattage:
+            result.append("%.3fW" % (intf.wattage / 1e6,))
+        else:
+            result.append(str(intf))
+    print(("  " if args.wattage else "\n").join(result))
+    sys.stdout.flush()
