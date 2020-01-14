@@ -116,7 +116,13 @@ function handle_input {
 }
 
 function print_format {
-    echo "$1" | envsubst '${SYMB}${VOL}${INDEX}${NAME}'
+    if [[ $markup == "pango" ]] ; then
+        output="<span color=\"$2\">$1</span>"
+    else
+        output=$1
+    fi
+
+    envsubst '${SYMB}${VOL}${INDEX}${NAME}' <<< "$output"
 }
 
 function print_block {
@@ -124,7 +130,7 @@ function print_block {
     [ -z "$ACTIVE" ] && ACTIVE=$(pacmd list-sinks | grep "index:\|name:\|volume: \(front\|mono\)\|muted:" | grep -A3 '*')
     for name in INDEX NAME VOL MUTED; do
         read $name
-    done < <(echo "$ACTIVE")
+    done <<< "$ACTIVE"
     INDEX=$(echo "$INDEX" | grep -o '[0-9]\+')
     VOL=$(echo "$VOL" | grep -o "[0-9]*%" | head -1 )
     VOL="${VOL%?}"
@@ -161,11 +167,11 @@ sed 's/.*= "\(.*\)".*/\1/')
     fi
 
     if [[ $SUBSCRIBE == 1 ]] ; then
-        print_format "$LONG_FORMAT"
+        print_format "$LONG_FORMAT" $COLOR
     else
-        print_format "$LONG_FORMAT"
-        print_format "$SHORT_FORMAT"
-        echo "$COLOR"
+        print_format "$LONG_FORMAT" $COLOR
+        print_format "$SHORT_FORMAT" $COLOR
+        # echo "$COLOR"
     fi
 }
 
