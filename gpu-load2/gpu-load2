@@ -7,9 +7,9 @@ import re
 import sys
 import threading
 
-label = os.environ.get('LABEL', '')
-interval = os.environ.get('INTERVAL', 10)
-query_cmd = ['nvidia-smi', '--format=csv,noheader,nounits']
+label = os.environ.get("LABEL", "")
+interval = os.environ.get("INTERVAL", 10)
+query_cmd = ["nvidia-smi", "--format=csv,noheader,nounits"]
 
 # @Marijn-Arch-PC ➜ ~/i3blocks-contrib/gpu-load2 git:(master) ✗ nvidia-settings -e all | grep -i fan -A3
 # Attribute 'GPUFanControlState':
@@ -86,77 +86,50 @@ query_cmd = ['nvidia-smi', '--format=csv,noheader,nounits']
 
 # GPU information:
 
+
 def query_value(keys):
-    return subprocess.check_output(query_cmd + ['--query-gpu=' + keys])
+    return subprocess.check_output(query_cmd + ["--query-gpu=" + keys])
 
 
 def query_continuous(keys, interval):
     return subprocess.Popen(
-        query_cmd + ['--query-gpu=' + keys, '-l', str(interval)],
-        stdout=PIPE, universal_newlines=True)
+        query_cmd + ["--query-gpu=" + keys, "-l", str(interval)],
+        stdout=PIPE,
+        universal_newlines=True,
+    )
 
 
 temperature_icons = [
-    '',  # Empty
-    '',  # Quarter
-    '',  # Half
-    '',  # Three-quarters
-    '',  # Full
+    "",  # Empty
+    "",  # Quarter
+    "",  # Half
+    "",  # Three-quarters
+    "",  # Full
 ]
 
 percent_stages = [
-    {
-        'min': 50,
-        'color': '#FFFF00',
-    },
-    {
-        'min': 80,
-        'color': '#FFFC00',
-    },
-    {
-        'min': 95,
-        'color': '#FF0000',
-    },
+    {"min": 50, "color": "#FFFF00",},
+    {"min": 80, "color": "#FFFC00",},
+    {"min": 95, "color": "#FF0000",},
 ]
 
 temperature_stages = [
+    {"min": 45, "icon": temperature_icons[1], "color": "#00FF00",},
+    {"min": 55, "icon": temperature_icons[2], "color": "#FFFF00",},
+    {"min": 80, "color": "#FFFC00", "icon": temperature_icons[3],},
     {
-        'min': 45,
-        'icon': temperature_icons[1],
-        'color': '#00FF00',
-    },
-    {
-        'min': 55,
-        'icon': temperature_icons[2],
-        'color': '#FFFF00',
-    },
-    {
-        'min': 80,
-        'color': '#FFFC00',
-        'icon': temperature_icons[3],
-    },
-    {
-        'min': 91,  # TODO: Query GPU Slowdown Temp
-        'color': '#FF0000',
-        'icon': temperature_icons[4],
+        "min": 91,  # TODO: Query GPU Slowdown Temp
+        "color": "#FF0000",
+        "icon": temperature_icons[4],
     },
 ]
 
-power_limit = float(query_value('power.limit'))
+power_limit = float(query_value("power.limit"))
 
 power_stages = [
-    {
-        'min': power_limit / 2,
-        'color': '#FFFF00',
-    },
-    {
-        'min': power_limit * .75,
-        'color': '#FFFC00',
-    },
-    {
-        'min': power_limit - 10,
-        'color': '#FF0000',
-    },
+    {"min": power_limit / 2, "color": "#FFFF00",},
+    {"min": power_limit * 0.75, "color": "#FFFC00",},
+    {"min": power_limit - 10, "color": "#FF0000",},
 ]
 
 
@@ -164,106 +137,80 @@ def get_clock_stage(max):
     return [
         {
             # Doing something, but still kinda idling.
-            'min': max / 2,
-            'color': '#00BFFF',
+            "min": max / 2,
+            "color": "#00BFFF",
         },
+        {"min": max * 0.75, "color": "#00BFCC",},
         {
-            'min': max * .75,
-            'color': '#00BFCC',
-        },
-        {
-            'min': max - 10,
+            "min": max - 10,
             # Running full-send is good:
-            'color': '#00FF00',
+            "color": "#00FF00",
         },
     ]
 
 
-graphics_clock_limit = int(query_value('clocks.max.graphics'))
+graphics_clock_limit = int(query_value("clocks.max.graphics"))
 graphics_clock_stages = get_clock_stage(graphics_clock_limit)
-memory_clock_limit = int(query_value('clocks.max.memory'))
+memory_clock_limit = int(query_value("clocks.max.memory"))
 memory_clock_stages = get_clock_stage(memory_clock_limit)
 
 
 def get_level(levels, level):
-    return next((l for l in reversed(levels) if level >= l['min']), None)
+    return next((l for l in reversed(levels) if level >= l["min"]), None)
 
 
 # See: nvidia-smi --help-query-gpu
 columns = [
     {
-        'property': 'temperature.gpu',
-        'icon': temperature_icons[0],
-        'unit': '°C',
-        'color': '#00BFFF',
-
-        'stages': temperature_stages,
-
-        'warn_reason': {
-            'property': 'clocks_throttle_reasons.hw_thermal_slowdown',
-        }
+        "property": "temperature.gpu",
+        "icon": temperature_icons[0],
+        "unit": "°C",
+        "color": "#00BFFF",
+        "stages": temperature_stages,
+        "warn_reason": {"property": "clocks_throttle_reasons.hw_thermal_slowdown",},
+    },
+    {"property": "fan.speed", "icon": "", "unit": "%", "stages": percent_stages,},
+    {"property": "pstate", "icon": "",},
+    {
+        "property": "utilization.gpu",
+        "icon": "",
+        "unit": "%",
+        "stages": percent_stages,
+    },
+    {"property": "power.draw", "icon": "", "unit": "W", "stages": power_stages,},
+    {
+        "property": "clocks.current.graphics",
+        "icon": "",
+        "unit": "MHz",
+        "stages": graphics_clock_stages,
     },
     {
-        'property': 'fan.speed',
-        'icon': '',
-        'unit': '%',
-
-        'stages': percent_stages,
+        "property": "clocks.current.memory",
+        "icon": "",
+        "unit": "MHz",
+        "stages": memory_clock_stages,
     },
     {
-        'property': 'pstate',
-        'icon': '',
-    },
-    {
-        'property': 'utilization.gpu',
-        'icon': '',
-        'unit': '%',
-
-        'stages': percent_stages,
-    },
-    {
-        'property': 'power.draw',
-        'icon': '',
-        'unit': 'W',
-
-        'stages': power_stages,
-    },
-    {
-        'property': 'clocks.current.graphics',
-        'icon': '',
-        'unit': 'MHz',
-
-        'stages': graphics_clock_stages,
-    },
-    {
-        'property': 'clocks.current.memory',
-        'icon': '',
-        'unit': 'MHz',
-
-        'stages': memory_clock_stages,
-    },
-    {
-        'property': 'utilization.memory',
-        'icon': '',
-        'unit': '%',
-
-        'stages': percent_stages,
+        "property": "utilization.memory",
+        "icon": "",
+        "unit": "%",
+        "stages": percent_stages,
     },
 ]
 
 
 def stringify_item(config, value):
-    icon = config['icon']
-    stages = config.get('stages')
-    color = config.get('color')
+    icon = config["icon"]
+    stages = config.get("stages")
+    color = config.get("color")
 
     if stages is not None:
         level = get_level(stages, value)
         if level is not None:
-            color = level.get('color', color)
-            icon = level.get('icon', icon)
+            color = level.get("color", color)
+            icon = level.get("icon", icon)
 
-    txt = '%s %s%s' % (icon, value, config.get('unit', ''))
+    txt = "%s %s%s" % (icon, value, config.get("unit", ""))
 
     if color is None:
         return txt
@@ -272,13 +219,13 @@ def stringify_item(config, value):
     return "<span color='%s'>%s</span>" % (color, txt)
 
 
-keys = ','.join(c['property'] for c in columns)
+keys = ",".join(c["property"] for c in columns)
 
 proc = query_continuous(keys, interval)
 
 
 def right_number_type(num):
-    if '.' in num:
+    if "." in num:
         return float(num)
     try:
         return int(num)
@@ -288,9 +235,11 @@ def right_number_type(num):
 
 for line in proc.stdout:
     print(
-        ' '.join(
+        " ".join(
             stringify_item(conf, right_number_type(value))
-            for conf, value in zip(columns, line.split(', '))))
+            for conf, value in zip(columns, line.split(", "))
+        )
+    )
     sys.stdout.flush()
 
 # Exit with the same error code as our subprocess
