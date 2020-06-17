@@ -149,10 +149,19 @@ def get_clock_stage(max):
     ]
 
 
-graphics_clock_limit = int(query_value("clocks.max.graphics"))
-graphics_clock_stages = get_clock_stage(graphics_clock_limit)
-memory_clock_limit = int(query_value("clocks.max.memory"))
-memory_clock_stages = get_clock_stage(memory_clock_limit)
+max_clock_names = ["graphics", "sm", "memory"]
+
+clock_stages = dict(
+    zip(
+        max_clock_names,
+        (
+            get_clock_stage(int(max_clk))
+            for max_clk in query_value(
+                ",".join("clocks.max." + c for c in max_clock_names)
+            ).split(b",")
+        ),
+    )
+)
 
 
 def get_level(levels, level):
@@ -179,16 +188,28 @@ columns = [
     },
     {"property": "power.draw", "icon": "", "unit": "W", "stages": power_stages,},
     {
-        "property": "clocks.current.graphics",
-        "icon": "",
+        "property": "clocks.gr",
+        "icon": "",
         "unit": "MHz",
-        "stages": graphics_clock_stages,
+        "stages": clock_stages["graphics"],
     },
     {
-        "property": "clocks.current.memory",
+        "property": "clocks.sm",
+        "icon": "",
+        "unit": "MHz",
+        "stages": clock_stages["sm"],
+    },
+    {
+        "property": "clocks.mem",
         "icon": "",
         "unit": "MHz",
-        "stages": memory_clock_stages,
+        "stages": clock_stages["memory"],
+    },
+    {
+        "property": "clocks.video",
+        "icon": "",
+        "unit": "MHz",
+        # No clocks.max.video...
     },
     {
         "property": "utilization.memory",
