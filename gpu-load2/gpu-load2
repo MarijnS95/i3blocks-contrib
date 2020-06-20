@@ -178,7 +178,7 @@ columns = [
         "stages": temperature_stages,
         "warn_reason": {"property": "clocks_throttle_reasons.hw_thermal_slowdown",},
     },
-    {"property": "fan.speed", "icon": "", "unit": "%", "stages": percent_stages,},
+    {"property": "fan.speed", "icon": "", "unit": "%", "stages": percent_stages,},
     {"property": "pstate", "icon": "",},
     {
         "property": "utilization.gpu",
